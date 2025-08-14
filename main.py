@@ -7,7 +7,7 @@ from models.user_model import User
 from models.login_model import Login
 from utils.security import validateuser, validateadmin
 
-# Importar routers
+
 from routes.category_routes import router as category_router
 from routes.product_routes import router as product_router
 
