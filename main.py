@@ -41,7 +41,7 @@ async def example_user(request: Request):
         "email": request.state.email
     }
 
-# Incluir routers de FootballTeam y Shirt
+
 app.include_router(category_router, tags=["📂 Categories"])
 app.include_router(product_router, tags=["🛒 Products"])
 
