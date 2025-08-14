@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 @app.get("/")
 def read_root():
-    return {"status": "healthy", "version": "0.0.0", "service": "supermarket"}
+    return {"status": "healthy", "version": "0.0.0", "service": "dulceria-api"}
 
 @app.get("/health")
 def health_check():
@@ -38,7 +38,7 @@ def health_check():
         return {
             "status": "healthy", 
             "timestamp": "2025-08-02", 
-            "service": "supermarket",
+            "service": "dulceria-api",
             "environment": "production"
         }
     except Exception as e:
@@ -52,7 +52,7 @@ def readiness_check():
         return {
             "status": "ready" if db_status else "not_ready",
             "database": "connected" if db_status else "disconnected",
-            "service": "supermarket"
+            "service": "dulceria-api"
         }
     except Exception as e:
         return {"status": "not_ready", "error": str(e)}
