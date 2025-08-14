@@ -35,7 +35,7 @@ class Product(BaseModel):
     )
 
     class Config:
-        # Permite que Pydantic maneje ObjectId de MongoDB
+     
         json_encoders = {
             ObjectId: str
         }
