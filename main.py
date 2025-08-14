@@ -9,6 +9,9 @@ from models.login_model import Login
 
 from utils.security import validateuser, validateadmin
 
+from routes.category_routes import router as category_router
+from routes.product_routes import router as product_router
+
 
 
 app = FastAPI()
@@ -23,6 +26,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
+# Incluir routers
+app.include_router(category_router)
+app.include_router(product_router)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -47,8 +53,8 @@ def health_check():
 @app.get("/ready")
 def readiness_check():
     try:
-        from utils.mongodb import t_connection
-        db_status = t_connection()
+        from utils.mongodb import test_connection
+        db_status = test_connection()
         return {
             "status": "ready" if db_status else "not_ready",
             "database": "connected" if db_status else "disconnected",
