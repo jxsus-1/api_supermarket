@@ -26,7 +26,7 @@ def get_mongo_client():
             server_api=ServerApi("1"),
             tls=True,
             tlsAllowInvalidCertificates=True,
-            serverSelectionTimeoutMS=5000  # Timeout más corto
+            serverSelectionTimeoutMS=5000  
         )
     return _client
 
