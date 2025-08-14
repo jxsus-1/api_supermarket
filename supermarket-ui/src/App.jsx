@@ -7,7 +7,6 @@ import {
   Navigate
 } from 'react-router-dom'
 
-
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
@@ -15,14 +14,12 @@ import PublicRoute from './components/PublicRoute'
 import Dashboard from './components/Dashboard'
 import LoginScreen from './components/LoginScreen'
 import SignupScreen from './components/SignupScreen'
-import CatalogTypesList from './components/CatalogTypesList'
-import CatalogsList from './components/CatalogsList'
 
-
+// Renombramos para que concuerde con tu API
+import CategoryList from './components/CategoryList' 
+import ProductList from './components/ProductList'       
 
 function App() {
-
-
   return (
     <AuthProvider>
       <Router>
@@ -58,20 +55,22 @@ function App() {
               }
             />
 
+            {/* Category = CatalogType */}
             <Route
-              path='/catalog-types'
+              path='/categories'
               element={
                 <ProtectedRoute>
-                  <CatalogTypesList />
+                  <CategoryList />
                 </ProtectedRoute>
               }
             />
 
+            {/* Product = Catalog */}
             <Route
-              path='/catalogs'
+              path='/products'
               element={
                 <ProtectedRoute>
-                  <CatalogsList />
+                  <ProductList />
                 </ProtectedRoute>
               }
             />
