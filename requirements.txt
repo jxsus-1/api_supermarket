@@ -4,3 +4,6 @@ pymongo
 python-dotenv
 firebase-admin
 pydantic
+pyjwt
+pytest
+
