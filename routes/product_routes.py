@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from utils.security import validateuser
+from utils.security import validateuser, validateadmin
 from controllers.product_controller import (
     create_product,
     get_product,
@@ -8,7 +8,6 @@ from controllers.product_controller import (
     list_products
 )
 from models.product_model import Product
-from utils.security import validateadmin , validateuser
 
 router = APIRouter()
 
@@ -37,6 +36,6 @@ async def remove_product(request: Request, product_id: str) -> dict:
 
 @router.get("/products", response_model=list[Product], tags=["🛒 Products"])
 @validateuser
-async def read_products() -> list[Product]:
+async def read_products(request: Request) -> list[Product]:
     """Listar todos los productos"""
     return await list_products()

@@ -21,6 +21,7 @@ const ProductForm = ({ item, onSuccess, onCancel }) => {
     const navigate = useNavigate();
 
     // Cargar categorías desde backend
+
     useEffect(() => {
         const loadCategories = async () => {
             try {
