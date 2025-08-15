@@ -11,10 +11,10 @@ const Dashboard = () => {
                 {/* Mensaje destacado */}
                 <div className="text-center mb-6">
                     <h2 className="text-3xl font-extrabold text-black-400 drop-shadow-lg">
-                        ¡Las mejores camisetas de fútbol, como las del Real Madrid!
+                        Supermarket
                     </h2>
                     <p className="text-black-200 mt-2 text-lg drop-shadow-md">
-                        Encuentra tu camiseta favorita y luce con estilo en cada partido ⚽
+                        Supermarket para la familia
                     </p>
                 </div>
 

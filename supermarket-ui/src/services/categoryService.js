@@ -1,8 +1,15 @@
 import { API_BASE_URL, handleResponse } from './api.js';
 
+// Función auxiliar para obtener el token y validar su existencia
+const getAuthToken = () => {
+  const token = localStorage.getItem('authToken');
+  if (!token) throw new Error("No hay token de autenticación. Por favor, inicia sesión.");
+  return token;
+};
+
 export const categoryService = {
   getAll: async () => {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/categories`, {
       method: 'GET',
       headers: { 
@@ -14,7 +21,7 @@ export const categoryService = {
   },
 
   create: async (category) => {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/categories`, {
       method: 'POST',
       headers: { 
@@ -27,7 +34,7 @@ export const categoryService = {
   },
 
   update: async (id, category) => {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
       method: 'PUT',
       headers: { 
@@ -40,7 +47,7 @@ export const categoryService = {
   },
 
   deactivate: async (id) => {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
       method: 'DELETE',
       headers: { 

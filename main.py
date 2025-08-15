@@ -23,7 +23,7 @@ app.add_middleware(
     allow_origins=["*"],  # Allow all origins for development; restrict in production
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_headers=["*"],  
 )
 
 # Incluir routers
@@ -44,7 +44,7 @@ def health_check():
         return {
             "status": "healthy", 
             "timestamp": "2025-08-02", 
-            "service": "dulceria-api",
+            "service": "supermarket-api",
             "environment": "production"
         }
     except Exception as e:

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
+from utils.security import validateuser
 from models.category_model import Category
+
 from controllers.category_controller import (
     create_category,
     get_category,
@@ -7,12 +9,12 @@ from controllers.category_controller import (
     delete_category,
     list_categories
 )
-from utils.security import validateadmin
+from utils.security import validateadmin,validateuser
 
 router = APIRouter()
 
 @router.post("/categories", response_model=Category, tags=["📂 Categories"])
-@validateadmin
+@validateuser
 async def create_category_endpoint(request: Request, category: Category) -> Category:
     """Crear una nueva categoría"""
     return await create_category(category)
@@ -28,13 +30,13 @@ async def get_category_endpoint(category_id: str) -> Category:
     return await get_category(category_id)
 
 @router.put("/categories/{category_id}", response_model=Category, tags=["📂 Categories"])
-@validateadmin
+@validateuser
 async def update_category_endpoint(request: Request, category_id: str, category: Category) -> Category:
     """Actualizar una categoría"""
     return await update_category(category_id, category)
 
 @router.delete("/categories/{category_id}", response_model=dict, tags=["📂 Categories"])
-@validateadmin
+@validateuser
 async def delete_category_endpoint(request: Request, category_id: str) -> dict:
     """Eliminar una categoría"""
     return await delete_category(category_id)
