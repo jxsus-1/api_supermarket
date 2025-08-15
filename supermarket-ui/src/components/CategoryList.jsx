@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { categoryService } from '../services';
 import { useAuth } from '../context/AuthContext';
-import Layout from "./Layout";
-import CategoriesForm from './CategoryForm';
+import Layout from './Layout';
+import CategoryForm from './CategoryForm';
 
-const CategoriesList = () => {
+const CategoryList = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showForm, setShowForm] = useState(false);
-    const [editingItem, setEditingItem] = useState(null);
+    const [editingCategory, setEditingCategory] = useState(null);
     const [recentlyUpdated, setRecentlyUpdated] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
     const { validateToken } = useAuth();
@@ -40,69 +40,50 @@ const CategoriesList = () => {
             setError('');
             const data = await categoryService.getAll();
             setCategories(data);
-        } catch (error) {
-            console.error('Error al cargar categorías:', error);
-            setError(error.message || 'Error al cargar las categorías');
+        } catch (err) {
+            console.error('Error al cargar categorías:', err);
+            setError(err.message || 'Error al cargar categorías');
         } finally {
             setLoading(false);
         }
     };
 
     const handleCreate = () => {
-        setEditingItem(null);
+        setEditingCategory(null);
         setShowForm(true);
     };
 
-    const handleEdit = (item) => {
-        setEditingItem(item);
+    const handleEdit = (category) => {
+        setEditingCategory(category);
         setShowForm(true);
     };
 
-    const handleDelete = async (item) => {
-        if (!validateToken()) return;
+    const handleDelete = async (id) => {
+        if (!window.confirm("¿Seguro que quieres eliminar esta categoría?")) return;
 
-        const hasProducts = item.number_of_products > 0;
-        const action = hasProducts ? 'desactivar' : 'eliminar';
-        const consequence = hasProducts
-            ? `Esta categoría tiene ${item.number_of_products} producto(s) asociado(s). Se desactivará pero se mantendrá la integridad de los datos.`
-            : 'Esta categoría será eliminada permanentemente del sistema.';
-
-        const confirmed = window.confirm(
-            `¿Estás seguro de ${action} la categoría "${item.description}"?\n\n${consequence}\n\n¿Deseas continuar?`
-        );
-
-        if (confirmed) {
-            try {
-                setError('');
-                await categoryService.deactivate(item.id);
-                await loadCategories();
-                const message = hasProducts
-                    ? 'Categoría desactivada exitosamente'
-                    : 'Categoría eliminada exitosamente';
-                setSuccessMessage(message);
-            } catch (error) {
-                console.error('Error al procesar:', error);
-                setError(error.message || `Error al ${action} la categoría`);
-            }
+        try {
+            await categoryService.deactivate(id);
+            setCategories(categories.filter(cat => cat.id !== id)); 
+            setSuccessMessage("Categoría eliminada exitosamente");
+        } catch (err) {
+            console.error("Error al eliminar categoría:", err);
+            setError(err.message || "Error al eliminar la categoría");
         }
     };
 
-    const handleFormSuccess = async (savedItem, isEdit = false) => {
+    const handleFormSuccess = async (savedCategory, isEdit = false) => {
         await loadCategories();
-        setRecentlyUpdated(savedItem.id);
-
-        const message = isEdit
-            ? 'Categoría actualizada exitosamente'
-            : 'Categoría creada exitosamente';
+        setRecentlyUpdated(savedCategory.id);
+        const message = isEdit ? 'Categoría actualizada exitosamente' : 'Categoría creada exitosamente';
         setSuccessMessage(message);
         setShowForm(false);
-        setEditingItem(null);
+        setEditingCategory(null);
         setError('');
     };
 
     const handleFormCancel = () => {
         setShowForm(false);
-        setEditingItem(null);
+        setEditingCategory(null);
     };
 
     if (loading) {
@@ -119,7 +100,7 @@ const CategoriesList = () => {
                 <h1 className="text-3xl font-bold text-gray-800">Categorías</h1>
                 <button
                     onClick={handleCreate}
-                    className="bg-pink-500 hover:bg-pink-600 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                    className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium py-2 px-4 rounded-md transition-colors"
                 >
                     + Nueva Categoría
                 </button>
@@ -147,83 +128,41 @@ const CategoriesList = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                ID
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Descripción
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Productos
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Estado
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Acciones
-                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {categories.length === 0 ? (
                             <tr>
-                                <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                                <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
                                     No hay categorías registradas
                                 </td>
                             </tr>
                         ) : (
-                            categories.map((item) => (
+                            categories.map((category) => (
                                 <tr
-                                    key={item.id}
+                                    key={category.id}
                                     className={`hover:bg-gray-50 transition-colors ${
-                                        recentlyUpdated === item.id ? 'bg-green-50 border-l-4 border-green-400' : ''
+                                        recentlyUpdated === category.id ? 'bg-green-50 border-l-4 border-green-400' : ''
                                     }`}
                                 >
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {item.id}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {item.description}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <span
-                                            className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
-                                                (item.number_of_products || 0) > 0
-                                                    ? 'bg-blue-100 text-blue-800'
-                                                    : 'bg-gray-100 text-gray-800'
-                                            }`}
-                                        >
-                                            {item.number_of_products || 0} productos
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                item.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                            }`}
-                                        >
-                                            {item.active ? 'Activo' : 'Inactivo'}
-                                        </span>
-                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{category.id}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{category.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
-                                            onClick={() => handleEdit(item)}
-                                            className="text-blue-600 hover:text-blue-900 mr-3"
+                                            onClick={() => handleEdit(category)}
+                                            className="text-yellow-400 hover:text-yellow-600 mr-2"
                                         >
-                                            Editar
+                                            Editar 
                                         </button>
-                                        {item.active && (
-                                            <button
-                                                onClick={() => handleDelete(item)}
-                                                className={`${
-                                                    (item.number_of_products || 0) > 0
-                                                        ? 'text-orange-600 hover:text-orange-900'
-                                                        : 'text-red-600 hover:text-red-900'
-                                                }`}
-                                            >
-                                                {(item.number_of_products || 0) > 0 ? 'Desactivar' : 'Eliminar'}
-                                            </button>
-                                        )}
+                                        <button 
+                                            onClick={() => handleDelete(category.id)}
+                                            className="text-red-600 hover:text-red-900"   
+                                        >    
+                                            Eliminar
+                                        </button>
                                     </td>
                                 </tr>
                             ))
@@ -233,8 +172,8 @@ const CategoriesList = () => {
             </div>
 
             {showForm && (
-                <CategoriesForm
-                    item={editingItem}
+                <CategoryForm
+                    item={editingCategory}
                     onSuccess={handleFormSuccess}
                     onCancel={handleFormCancel}
                 />
@@ -243,4 +182,4 @@ const CategoriesList = () => {
     );
 };
 
-export default CategoriesList;
+export default CategoryList;

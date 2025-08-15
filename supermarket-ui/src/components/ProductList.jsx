@@ -1,235 +1,265 @@
-import { useState, useEffect } from 'react';
-import { productService, categoryService } from '../services';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import Layout from "./Layout";
-import ProductForm from './ProductForm';
+import { productService } from '../services';
+import { useNavigate } from 'react-router-dom';
 
-const ProductsList = () => {
-    const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(true);
+const ProductForm = ({ item, categories, onSuccess, onCancel }) => {
+    const [formData, setFormData] = useState({
+        category_id: item?.category_id || '',
+        name: item?.name || '',
+        description: item?.description || '',
+        image: item?.image || '',
+        price: item?.price || '',
+        discount: item?.discount || 0,
+        stock: item?.stock || 0
+    });
     const [error, setError] = useState('');
-    const [showForm, setShowForm] = useState(false);
-    const [editingItem, setEditingItem] = useState(null);
-    const [recentlyUpdated, setRecentlyUpdated] = useState(null);
-    const [successMessage, setSuccessMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const { validateToken } = useAuth();
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    useEffect(() => {
-        if (recentlyUpdated) {
-            const timer = setTimeout(() => setRecentlyUpdated(null), 2000);
-            return () => clearTimeout(timer);
-        }
-    }, [recentlyUpdated]);
-
-    useEffect(() => {
-        if (successMessage) {
-            const timer = setTimeout(() => setSuccessMessage(''), 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [successMessage]);
-
-    const loadData = async () => {
-        try {
-            setLoading(true);
-            setError('');
-
-            const productsData = await productService.getAll();
-            setProducts(productsData["products"]);
-
-            try {
-                const categoriesData = await categoryService.getAll();
-                setCategories(categoriesData);
-            } catch (catError) {
-                console.warn('Error al cargar categorías:', catError);
-                setCategories([]);
-            }
-
-        } catch (error) {
-            console.error('Error al cargar productos:', error);
-            setError(error.message || 'Error al cargar los productos');
-        } finally {
-            setLoading(false);
-        }
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+        if (error) setError('');
     };
 
-    const handleCreate = () => {
-        setEditingItem(null);
-        setShowForm(true);
-    };
-
-    const handleEdit = (item) => {
-        setEditingItem(item);
-        setShowForm(true);
-    };
-
-    const handleDelete = async (item) => {
+    const handleSubmit = async () => {
+        if (isSubmitting) return;
         if (!validateToken()) return;
 
-        const confirmed = window.confirm(
-            `¿Estás seguro de eliminar el producto "${item.name}"?\n\nEsta acción no se puede deshacer.`
-        );
+        if (!formData.category_id.trim()) { setError('La categoría es requerida'); return; }
+        if (!formData.name.trim()) { setError('El nombre es requerido'); return; }
+        const namePattern = /^[0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]+$/;
+        if (!namePattern.test(formData.name)) { setError('El nombre solo puede contener letras, números, espacios, apostrofes y guiones'); return; }
+        if (!formData.description.trim()) { setError('La descripción es requerida'); return; }
+        if (!formData.image.trim()) { setError('La URL de la imagen es requerida'); return; }
+        if (!formData.price || parseFloat(formData.price) <= 0) { setError('El precio debe ser mayor a 0'); return; }
+        const discount = parseInt(formData.discount) || 0;
+        if (discount < 0 || discount > 100) { setError('El descuento debe estar entre 0 y 100'); return; }
+        if (formData.stock < 0) { setError('El stock no puede ser negativo'); return; }
 
-        if (confirmed) {
-            try {
-                setError('');
-                await productService.deactivate(item.id);
-                await loadData();
-                setSuccessMessage('Producto eliminado exitosamente');
-            } catch (error) {
-                console.error('Error al eliminar:', error);
-                setError(error.message || 'Error al eliminar el producto');
+        setIsSubmitting(true);
+        try {
+            setError('');
+            let savedItem;
+            if (item) {
+                savedItem = await productService.update(item.id, formData);
+                if (!savedItem) savedItem = { ...item, ...formData };
+                onSuccess(savedItem, true);
+            } else {
+                savedItem = await productService.create(formData);
+                if (!savedItem) savedItem = { id: Date.now().toString(), ...formData };
+                onSuccess(savedItem, false);
             }
+
+            navigate('/products');
+
+        } catch (err) {
+            console.error('Error al guardar producto:', err);
+            setError(err.message || 'Error al guardar el producto');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const handleFormSuccess = async (savedItem, isEdit = false) => {
-        await loadData();
-        setRecentlyUpdated(savedItem.id);
-        const message = isEdit ? 'Producto actualizado exitosamente' : 'Producto creado exitosamente';
-        setSuccessMessage(message);
-        setShowForm(false);
-        setEditingItem(null);
-        setError('');
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !isSubmitting) handleSubmit();
+        if (e.key === 'Escape') onCancel();
     };
 
-    const handleFormCancel = () => {
-        setShowForm(false);
-        setEditingItem(null);
-    };
-
-    const getCategoryName = (product) => {
-        return product.category_name || 'Categoría no encontrada';
-    };
-
-    const formatCurrency = (amount) =>
-        new Intl.NumberFormat('es-HN', { style: 'currency', currency: 'HNL' }).format(amount);
-
-    const calculateFinalPrice = (cost, discount) => cost - (cost * discount) / 100;
-
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="text-lg text-gray-600">Cargando productos...</div>
-            </div>
-        );
-    }
+    const activeCategories = categories;
 
     return (
-        <Layout>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Productos</h1>
-                <button
-                    onClick={handleCreate}
-                    className="bg-pink-500 hover:bg-pink-600 text-white font-medium py-2 px-4 rounded-md transition-colors"
-                >
-                    + Nuevo Producto
-                </button>
-            </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                    <h2 className="text-xl font-bold text-yellow-500 mb-4">
+                        {item ? 'Editar Producto' : 'Nuevo Producto'}
+                    </h2>
 
-            {successMessage && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
-                    <div className="flex items-center">
-                        <span className="mr-2">✅</span>
-                        <span>{successMessage}</span>
-                    </div>
-                </div>
-            )}
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                            <div className="flex items-center">
+                                <span className="mr-2">❌</span>
+                                <span>{error}</span>
+                            </div>
+                        </div>
+                    )}
 
-            {error && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-                    <div className="flex items-center">
-                        <span className="mr-2">❌</span>
-                        <span>{error}</span>
-                    </div>
-                </div>
-            )}
+                    <div className="space-y-4">
+                        {/* Categoría */}
+                        <div>
+                            <label htmlFor="category_id" className="block text-sm font-medium text-yellow-700 mb-1">
+                                Categoría *
+                            </label>
+                            <select
+                                id="category_id"
+                                name="category_id"
+                                value={formData.category_id}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-yellow-400 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white text-black"
+                                required
+                            >
+                                <option value="">Seleccionar categoría...</option>
+                                {activeCategories.map((cat) => (
+                                    <option key={cat.id} value={cat.id} className="text-black">
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descuento</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Final</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {products.length === 0 ? (
-                            <tr>
-                                <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                                    No hay productos registrados
-                                </td>
-                            </tr>
-                        ) : (
-                            products.map((item) => (
-                                <tr
-                                    key={item.id}
-                                    className={`hover:bg-gray-50 transition-colors ${recentlyUpdated === item.id ? 'bg-green-50 border-l-4 border-green-400' : ''}`}
-                                >
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                                        <div className="text-sm text-gray-500 truncate max-w-xs">{item.description}</div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                                            {getCategoryName(item)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(item.cost)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {item.discount > 0 ? (
-                                            <span className="inline-flex px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">{item.discount}%</span>
-                                        ) : (
-                                            <span className="text-gray-400">Sin descuento</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {item.discount > 0 ? (
-                                            <div className="flex flex-col">
-                                                <span className="text-green-600">{formatCurrency(calculateFinalPrice(item.cost, item.discount))}</span>
-                                                <span className="text-xs text-gray-400 line-through">{formatCurrency(item.cost)}</span>
-                                            </div>
-                                        ) : (
-                                            formatCurrency(item.cost)
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${item.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {item.active ? 'Activo' : 'Inactivo'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
-                                        {item.active && (
-                                            <button onClick={() => handleDelete(item)} className="text-red-600 hover:text-red-900">Eliminar</button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
+                        {/* Nombre */}
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-yellow-700 mb-1">
+                                Nombre *
+                            </label>
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleChange}
+                                onKeyDown={handleKeyPress}
+                                className="w-full px-3 py-2 border border-yellow-400 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white text-black"
+                                placeholder="Ej: Balón Oficial 2025"
+                                maxLength="100"
+                                autoFocus={!item}
+                            />
+                        </div>
+
+                        {/* Descripción */}
+                        <div>
+                            <label htmlFor="description" className="block text-sm font-medium text-yellow-700 mb-1">
+                                Descripción *
+                            </label>
+                            <textarea
+                                id="description"
+                                name="description"
+                                value={formData.description}
+                                onChange={handleChange}
+                                rows="3"
+                                className="w-full px-3 py-2 border border-yellow-400 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white text-black"
+                                placeholder="Descripción del producto..."
+                                maxLength="500"
+                            />
+                        </div>
+
+                        {/* Imagen */}
+                        <div>
+                            <label htmlFor="image" className="block text-sm font-medium text-yellow-700 mb-1">
+                                URL de Imagen *
+                            </label>
+                            <input
+                                type="text"
+                                id="image"
+                                name="image"
+                                value={formData.image}
+                                onChange={handleChange}
+                                onKeyDown={handleKeyPress}
+                                className="w-full px-3 py-2 border border-yellow-400 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white text-black"
+                                placeholder="https://ejemplo.com/producto.jpg"
+                            />
+                        </div>
+
+                        {/* Precio y Descuento */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="price" className="block text-sm font-medium text-yellow-700 mb-1">
+                                    Precio (HNL) *
+                                </label>
+                                <input
+                                    type="number"
+                                    id="price"
+                                    name="price"
+                                    value={formData.price}
+                                    onChange={handleChange}
+                                    onKeyDown={handleKeyPress}
+                                    className="w-full px-3 py-2 border border-yellow-400 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white text-black"
+                                    placeholder="0.00"
+                                    min="0.01"
+                                    step="0.01"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="discount" className="block text-sm font-medium text-yellow-700 mb-1">
+                                    Descuento (%)
+                                </label>
+                                <input
+                                    type="number"
+                                    id="discount"
+                                    name="discount"
+                                    value={formData.discount}
+                                    onChange={handleChange}
+                                    onKeyDown={handleKeyPress}
+                                    className="w-full px-3 py-2 border border-yellow-400 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white text-black"
+                                    placeholder="0"
+                                    min="0"
+                                    max="100"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Stock */}
+                        <div>
+                            <label htmlFor="stock" className="block text-sm font-medium text-yellow-700 mb-1">
+                                Stock *
+                            </label>
+                            <input
+                                type="number"
+                                id="stock"
+                                name="stock"
+                                value={formData.stock}
+                                onChange={handleChange}
+                                onKeyDown={handleKeyPress}
+                                className="w-full px-3 py-2 border border-yellow-400 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white text-black"
+                                placeholder="Cantidad en inventario"
+                                min="0"
+                            />
+                        </div>
+
+                        {/* Vista de precio con descuento */}
+                        {formData.price && formData.discount > 0 && (
+                            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                <div className="text-sm text-yellow-800"><strong>Precio con descuento:</strong></div>
+                                <div className="text-lg font-medium text-yellow-900">
+                                    <span className="line-through text-gray-500 mr-2">
+                                        L. {parseFloat(formData.price).toFixed(2)}
+                                    </span>
+                                    L. {(parseFloat(formData.price) * (1 - formData.discount / 100)).toFixed(2)}
+                                    <span className="text-sm text-yellow-700 ml-2">({formData.discount}% descuento)</span>
+                                </div>
+                            </div>
                         )}
-                    </tbody>
-                </table>
-            </div>
+                    </div>
 
-            {showForm && (
-                <ProductForm
-                    item={editingItem}
-                    categories={categories}
-                    onSuccess={handleFormSuccess}
-                    onCancel={handleFormCancel}
-                />
-            )}
-        </Layout>
+                    {/* Botones */}
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-200 hover:bg-yellow-300 rounded-md transition-colors"
+                            disabled={isSubmitting}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="px-4 py-2 text-sm font-medium text-black bg-yellow-400 hover:bg-yellow-500 rounded-md disabled:opacity-50 transition-colors"
+                        >
+                            {isSubmitting ? 'Guardando...' : 'Guardar'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };
 
-export default ProductsList;
+export default ProductForm;
