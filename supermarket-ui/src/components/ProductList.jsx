@@ -89,6 +89,14 @@ const ProductList = () => {
         setEditingProduct(null);
     };
 
+    const getCategoryName = (product) => {
+        const category = categories.find(c => c.id === product.category_id);
+        return category ? category.name : 'Sin categoría';
+    };
+
+    const formatCurrency = (value) => `$${value.toFixed(2)}`;
+    const calculateFinalPrice = (cost, discount) => cost * (1 - discount / 100);
+
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-screen">
@@ -103,7 +111,7 @@ const ProductList = () => {
                 <h1 className="text-3xl font-bold text-gray-800">Productos</h1>
                 <button
                     onClick={handleCreate}
-                    className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium py-2 px-4 rounded-md transition-colors"
+                    className="bg-pink-500 hover:bg-pink-600 text-white font-medium py-2 px-4 rounded-md transition-colors"
                 >
                     + Nuevo Producto
                 </button>
@@ -131,13 +139,27 @@ const ProductList = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descuento</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Final</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Nombre
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Categoría
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Costo
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Descuento
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Precio Final
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Estado
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Acciones
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -148,36 +170,68 @@ const ProductList = () => {
                                 </td>
                             </tr>
                         ) : (
-                            products.map((product) => (
-                                <tr
-                                    key={product.id}
+                            products.map((item) => (
+                                <tr 
+                                    key={item.id} 
                                     className={`hover:bg-gray-50 transition-colors ${
-                                        recentlyUpdated === product.id ? 'bg-green-50 border-l-4 border-green-400' : ''
+                                        recentlyUpdated === item.id 
+                                            ? 'bg-green-50 border-l-4 border-green-400' 
+                                            : ''
                                     }`}
                                 >
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {categories.find(c => c.id === product.category_id)?.name || 'Categoría no encontrada'}
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                                        <div className="text-sm text-gray-500 truncate max-w-xs">{item.description}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">L. {product.price.toFixed(2)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.discount || 0}%</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        L. {(product.price * (1 - (product.discount || 0) / 100)).toFixed(2)}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {getCategoryName(item)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.stock}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {formatCurrency(item.cost)}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {item.discount > 0 ? (
+                                            <span className="inline-flex px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                                                {item.discount}%
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-400">Sin descuento</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {item.discount > 0 ? (
+                                            <div className="flex flex-col">
+                                                <span className="text-green-600">{formatCurrency(calculateFinalPrice(item.cost, item.discount))}</span>
+                                                <span className="text-xs text-gray-400 line-through">{formatCurrency(item.cost)}</span>
+                                            </div>
+                                        ) : (
+                                            formatCurrency(item.cost)
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                            item.active 
+                                                ? 'bg-green-100 text-green-800' 
+                                                : 'bg-red-100 text-red-800'
+                                        }`}>
+                                            {item.active ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
-                                            onClick={() => handleEdit(product)}
-                                            className="text-yellow-400 hover:text-yellow-600 mr-2"
+                                            onClick={() => handleEdit(item)}
+                                            className="text-blue-600 hover:text-blue-900 mr-3"
                                         >
-                                            Editar 
+                                            Editar
                                         </button>
-                                        <button 
-                                            onClick={() => handleDelete(product.id)}
-                                            className="text-red-600 hover:text-red-900"
-                                        >    
-                                            Eliminar                                      
-                                        </button>
+                                        {item.active && (
+                                            <button
+                                                onClick={() => handleDelete(item.id)}
+                                                className="text-red-600 hover:text-red-900"
+                                            >
+                                                Eliminar
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))
